@@ -1,0 +1,112 @@
+@startuml
+title Music Playback System — Bridge + Adapter Pattern Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam roundcorner 8
+
+package "Abstraction (Bridge)" {
+    abstract class Playable {
+        # engine: AudioEngine
+        + {abstract} play(): void
+        + {abstract} stop(): void
+        + setVolume(level: double): void
+    }
+
+    class Song {
+        - filePath: String
+        - title: String
+        - artist: String
+        + Song(filePath: String, title: String, artist: String, engine: AudioEngine)
+        + play(): void
+        + stop(): void
+        + getFilePath(): String
+        + getTitle(): String
+        + getArtist(): String
+    }
+
+    class Playlist {
+        - name: String
+        - filePaths: List<String>
+        - currentIndex: int
+        + Playlist(name: String, filePaths: List<String>, engine: AudioEngine)
+        + play(): void
+        + stop(): void
+        + next(): void
+        + getName(): String
+        + getCurrentIndex(): int
+        + getSize(): int
+    }
+
+    Playable <|-- Song
+    Playable <|-- Playlist
+}
+
+package "Implementor (Bridge)" {
+    interface AudioEngine {
+        + load(filePath: String): void
+        + play(): void
+        + stop(): void
+        + setVolume(level: double): void
+    }
+
+    class JavaSoundEngine {
+        - clip: Clip
+        + load(filePath: String): void
+        + play(): void
+        + stop(): void
+        + setVolume(level: double): void
+    }
+
+    class FFmpegEngine {
+        - loadedPath: String
+        - process: Process
+        - currentVolume: double
+        + load(filePath: String): void
+        + play(): void
+        + stop(): void
+        + setVolume(level: double): void
+    }
+
+    class LegacyWinampAdapter {
+        - plugin: LegacyWinampPlugin
+        + LegacyWinampAdapter(plugin: LegacyWinampPlugin)
+        + load(filePath: String): void
+        + play(): void
+        + stop(): void
+        + setVolume(level: double): void
+    }
+
+    AudioEngine <|.. JavaSoundEngine
+    AudioEngine <|.. FFmpegEngine
+    AudioEngine <|.. LegacyWinampAdapter
+}
+
+Playable o-> "1" AudioEngine : bridge delegation
+
+package "Legacy Third-Party (Incompatible)" {
+    class LegacyWinampPlugin <<third-party>> #LightYellow {
+        - loadedPath: String
+        - playing: boolean
+        + openTrack(path: String, sampleRate: int): int
+        + startPlayback(): int
+        + stopPlayback(): int
+        + setGainDb(gainDb: float): int
+    }
+}
+
+LegacyWinampAdapter *--> "1" LegacyWinampPlugin : wraps / adapts
+
+package "Complexity Module: Dynamic Selection" {
+    class AudioEngineSelector {
+        - javaSoundEngine: AudioEngine
+        - ffmpegEngine: AudioEngine
+        - legacyWinampAdapter: AudioEngine
+        + AudioEngineSelector(javaSound: AudioEngine, ffmpeg: AudioEngine, adapter: AudioEngine)
+        + selectFor(filePath: String): AudioEngine
+    }
+
+    AudioEngineSelector ..> AudioEngine : selects implementor
+}
+
+@enduml
